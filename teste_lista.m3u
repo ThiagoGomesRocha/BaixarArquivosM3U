@@ -1,0 +1,25 @@
+#EXTM3U
+
+#EXTINF:-1 tvg-id="1001" tvg-name="The Mandalorian" group-title="Series | Sci-Fi",The Mandalorian S01E01 - The Child
+https://example.com/videos/1001.mp4
+
+#EXTINF:-1 tvg-id="1002" tvg-name="The Mandalorian" group-title="Series | Sci-Fi",The Mandalorian S01E02 - The Journey
+https://example.com/videos/1002.mp4
+
+#EXTINF:-1 tvg-id="1003" tvg-name="The Mandalorian" group-title="Series | Sci-Fi",The Mandalorian S01E03 - The Rescue
+https://example.com/videos/1003.mp4
+
+#EXTINF:-1 tvg-id="2001" tvg-name="The Mandalorian" group-title="Series | Sci-Fi",The Mandalorian S02E01 - New Beginnings
+https://example.com/videos/2001.mp4
+
+#EXTINF:-1 tvg-id="2002" tvg-name="The Mandalorian" group-title="Series | Sci-Fi",The Mandalorian S02E02 - The Trap
+https://example.com/videos/2002.mp4
+
+#EXTINF:-1 tvg-id="3001" group-title="Filmes | Animacao",Toy Story
+https://example.com/movies/3001.mp4
+
+#EXTINF:-1 tvg-id="3002" group-title="Filmes | Animacao",Procurando Nemo
+https://example.com/movies/3002.mp4
+
+#EXTINF:-1 tvg-id="3003" group-title="Filmes | Acao",Homem de Ferro
+https://example.com/movies/3003.mp4

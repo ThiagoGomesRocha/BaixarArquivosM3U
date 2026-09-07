@@ -1,14 +1,1 @@
-{
-    "base_dir": "",
-    "last_m3u_url": "",
-    "regex_serie": "^(.*?)\\s+S(\\d+)E(\\d+)",
-    "retries": 3,
-    "duplicate_policy": "skip",
-    "auto_organize": true,
-    "theme": "dark",
-    "download_dir": "temp",
-    "log_level": "INFO",
-    "yt_dlp_path": "python -m yt_dlp",
-    "cookies_file": "",
-    "max_concurrent_downloads": 3
-}
+{}

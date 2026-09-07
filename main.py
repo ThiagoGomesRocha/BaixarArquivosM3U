@@ -8,7 +8,10 @@ Ponto de entrada principal
 import os
 import sys
 import json
+import logging
 from pathlib import Path
+from datetime import datetime
+from typing import Tuple
 
 # Adiciona o diretório atual ao path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -17,72 +20,136 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
 from m3u_organizer.gui import M3UOrganizerGUI
+from m3u_organizer.config_validator import (
+    ConfigValidator,
+    validate_and_normalize_config,
+    get_default_config
+)
 
 
-def load_config() -> dict:
-    """Carrega configurações do arquivo config.json."""
+def setup_logging(log_level: str = "INFO") -> logging.Logger:
+    """
+    Configura o sistema de logging.
+
+    Args:
+        log_level: Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+
+    Returns:
+        Logger configurado
+    """
+    # Criar diretório de logs
+    log_dir = Path(__file__).parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+
+    # Nível de log
+    level = getattr(logging, log_level.upper(), logging.INFO)
+
+    # Configurar log básico
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_dir / f"m3u_organizer_{datetime.now().strftime('%Y%m%d')}.log"),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+    return logging.getLogger(__name__)
+
+
+def load_config() -> Tuple[dict, dict]:
+    """
+    Carrega e valida configurações do arquivo config.json.
+
+    Returns:
+        Tupla (config_normalizada, resultados_validacao)
+    """
     config_path = Path(__file__).parent / "config.json"
-    
-    default_config = {
-        "base_dir": "",
-        "last_m3u_url": "",
-        "regex_serie": r"^(.*?)\s+S(\d+)E(\d+)",
-        "retries": 3,
-        "duplicate_policy": "skip",
-        "auto_organize": True,
-        "theme": "dark",
-        "download_dir": "temp",
-        "log_level": "INFO",
-        "yt_dlp_path": "yt-dlp",
-        "cookies_file": "",
-        "max_concurrent_downloads": 3,
-    }
-    
+
+    # Carregar configuração existente ou criar padrão
     if config_path.exists():
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 user_config = json.load(f)
-                default_config.update(user_config)
-                print(f"[CONFIG] Carregado de {config_path}")
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"[WARN] Erro ao carregar config.json: {e}. Usando configuração padrão.")
+            print(f"[CONFIG] Carregado de {config_path}")
+        except json.JSONDecodeError as e:
+            print(f"[WARN] Erro ao decodificar config.json: {e}. Usando configuração padrão.")
+            user_config = {}
+        except IOError as e:
+            print(f"[WARN] Erro ao ler config.json: {e}. Usando configuração padrão.")
+            user_config = {}
     else:
         # Cria config.json padrão
+        default_config = get_default_config()
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(default_config, f, indent=2, ensure_ascii=False)
         print(f"[CONFIG] Criado config.json padrão em {config_path}")
-    
-    return default_config
+        user_config = {}
+
+    # Validar e normalizar configuração
+    normalized_config, validation = validate_and_normalize_config(user_config)
+
+    # Relatar problemas de validação
+    if not validation.is_valid:
+        print(f"[ERROR] Configuração inválida:")
+        for error in validation.errors:
+            print(f"  - {error}")
+
+    if validation.warnings:
+        print(f"[WARN] Avisos de validação:")
+        for warning in validation.warnings:
+            print(f"  - {warning}")
+
+    # Salvar configuração corrigida
+    try:
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(normalized_config, f, indent=2, ensure_ascii=False)
+    except IOError as e:
+        print(f"[WARN] Não foi possível salvar config.json atualizado: {e}")
+
+    return normalized_config, {
+        "is_valid": validation.is_valid,
+        "errors": validation.errors,
+        "warnings": validation.warnings
+    }
 
 
-def main():
-    """Função principal de entrada."""
-    # Configura log
-    from datetime import datetime
-    log_dir = Path(__file__).parent / "logs"
-    log_dir.mkdir(exist_ok=True)
-    
-    log_file = log_dir / f"m3u_organizer_{datetime.now().strftime('%Y%m%d')}.log"
-    
-    print(f"[INFO] Iniciando M3U Organizer")
-    print(f"[INFO] Log: {log_file}")
-    
-    # Carrega configurações
-    config = load_config()
-    
-    # Inicializa aplicação Qt
+def main() -> int:
+    """
+    Função principal de entrada.
+
+    Returns:
+        Código de saída (0 para sucesso)
+    """
+    # Carregar configuração primeiro (para configurar log_level)
+    config = load_config()[0]
+
+    # Configurar logging após carregar config
+    log_level = config.get("log_level", "INFO")
+    logger = setup_logging(log_level)
+
+    logger.info("=" * 50)
+    logger.info("Iniciando M3U Organizer")
+    logger.info("=" * 50)
+
+    # Inicializar aplicação Qt
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
-    
-    # Cria janela principal
-    window = M3UOrganizerGUI(config)
-    window.show()
-    
-    # Log de inicialização
-    print(f"[INFO] Aplicação iniciada com sucesso")
-    
-    sys.exit(app.exec())
+
+    # Criar janela principal
+    try:
+        main_window = M3UOrganizerGUI(config)
+        main_window.show()
+        logger.info("Janela principal criada com sucesso")
+    except Exception as e:
+        logger.error(f"Erro ao criar janela principal: {e}")
+        return 1
+
+    logger.info("Aplicação iniciada com sucesso")
+
+    # Executar loop de eventos
+    return app.exec()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

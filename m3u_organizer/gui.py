@@ -180,7 +180,7 @@ class M3UOrganizerGUI(QMainWindow):
         parent_layout.addWidget(group)
 
     def _setup_filter_area(self, parent_layout):
-        """Área de filtro em tempo real."""
+        """Área de filtro com botão de pesquisa."""
         group = QGroupBox("2. Filtrar")
         group.setFlat(True)
         layout = QHBoxLayout(group)
@@ -188,8 +188,12 @@ class M3UOrganizerGUI(QMainWindow):
         layout.addWidget(QLabel("Filtrar:"))
         self.filter_input = QLineEdit()
         self.filter_input.setPlaceholderText("Digite para filtrar por série, temporada, título...")
-        self.filter_input.textChanged.connect(self._filter_tree)
+        self.filter_input.returnPressed.connect(self._apply_filter)
         layout.addWidget(self.filter_input, 1)
+        
+        self.search_btn = QPushButton("Pesquisar")
+        self.search_btn.clicked.connect(self._apply_filter)
+        layout.addWidget(self.search_btn)
 
         self.select_all_btn = QPushButton("Selecionar todos")
         self.select_all_btn.clicked.connect(self._select_all)
@@ -229,7 +233,7 @@ class M3UOrganizerGUI(QMainWindow):
         self.tree_widget.setHeaderLabels(["Título", "Ep/Temp", "Status", "Tamanho", "URL"])
         self.tree_widget.setHeaderHidden(False)
         self.tree_widget.setSelectionMode(QTreeWidget.NoSelection)
- #         self.tree_widget.itemChanged.connect(self._on_item_changed)
+        self.tree_widget.itemChanged.connect(self._on_item_changed)
         header = self.tree_widget.header()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.resizeSection(1, 120)
@@ -638,6 +642,58 @@ class M3UOrganizerGUI(QMainWindow):
                 if child.checkState(0) == Qt.Checked:
                     count_ref[0] += 1
             self._count_checked(child, count_ref)
+
+    def _apply_filter(self):
+        """Aplica filtro quando o usuário digita e pressiona Enter ou clica em Pesquisar."""
+        filter_text = self.filter_input.text().strip().lower()
+
+        # Limpa filtros anteriores
+        self._clear_tree_filters()
+
+        if not filter_text:
+            return
+
+        def filter_item(item: QTreeWidgetItem) -> bool:
+            """Retorna True se o item deve ser visível."""
+            text = item.text(0).lower()
+            item_type = item.data(0, Qt.UserRole)
+
+            if item_type in ("episode", "movie"):
+                subtitle = item.text(1).lower()
+                return filter_text in text or filter_text in subtitle
+
+            elif item_type == "movies":
+                for i in range(item.childCount()):
+                    movie = item.child(i)
+                    if filter_item(movie):
+                        return True
+                return False
+
+            else:
+                # Séries e temporadas
+                for i in range(item.childCount()):
+                    child = item.child(i)
+                    if filter_item(child):
+                        return True
+                return False
+
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+            item.setHidden(not filter_item(item))
+
+        self.tree_widget.expandAll()
+
+    def _clear_tree_filters(self):
+        """Limpa todos os filtros aplicados a árvore."""
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+            item.setHidden(False)
+            for j in range(item.childCount()):
+                child = item.child(j)
+                child.setHidden(False)
+                for k in range(child.childCount()):
+                    grandchild = child.child(k)
+                    grandchild.setHidden(False)
 
     def _filter_tree(self):
         """Filtra a árvore em tempo real."""

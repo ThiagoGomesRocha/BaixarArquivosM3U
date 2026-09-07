@@ -90,7 +90,7 @@ class Downloader:
                 time.sleep(backoff)
 
             try:
-                result = self._run_yt_dlp(cmd, item_id, progress_callback)
+                result = self._run_yt_dlp(cmd, item_id, output_template, progress_callback)
 
                 if result.success:
                     return result
@@ -140,7 +140,7 @@ class Downloader:
 
         return cmd
 
-    def _run_yt_dlp(self, cmd: list[str], item_id: str,
+    def _run_yt_dlp(self, cmd: list[str], item_id: str, output_template: str,
                     progress_callback: Callable = None) -> DownloadResult:
         """Executa o comando yt-dlp e monitora progresso."""
         start_time = time.time()
